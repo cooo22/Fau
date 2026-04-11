@@ -1,0 +1,138 @@
+-- ================== SAFE RAYFIELD LOADER ==================
+local success, Rayfield = pcall(function()
+    return loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+end)
+
+if not success then
+    warn("[WARN] Primary Rayfield URL failed, trying GitHub fallback...")
+    success, Rayfield = pcall(function()
+        -- Updated the fallback to the correct Sirius repository path
+        return loadstring(game:HttpGet('https://raw.githubusercontent.com/SiriusSoftwareRepo/Rayfield/main/source.lua'))()
+    end)
+    if not success then
+        error("[FATAL] Rayfield could not be loaded. Error: " .. tostring(Rayfield))
+    end
+end
+
+-- ================== SERVICES ==================
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+local TeleportService = game:GetService("TeleportService")
+local LocalPlayer = Players.LocalPlayer
+
+-- ================== HELPER FUNCTIONS ==================
+local function getHumanoid()
+    local char = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+    return char:FindFirstChildOfClass("Humanoid")
+end
+
+-- ================== CREATE WINDOW ==================
+local Window = Rayfield:CreateWindow({
+    Name = "My Own Hub",
+    Icon = 0,
+    LoadingTitle = "My Own Hub",
+    LoadingSubtitle = "by Fau",
+    Theme = "Default",
+    DisableRayfieldPrompts = false,
+    ToggleUIKeybind = Enum.KeyCode.RightShift,
+    ConfigurationSaving = {
+        Enabled = true,
+        FolderName = "MyOwn",
+        FileName = "Settings"
+    },
+    Discord = {
+        Enabled = false,
+        Invite = "",
+        RememberJoins = true
+    },
+    KeySystem = false
+})
+
+-- ================== HOME TAB ==================
+local HomeTab = Window:CreateTab("🏠 Home", 4483362458)
+HomeTab:CreateSection("Player Tweaks")
+
+HomeTab:CreateSlider({
+    Name = "Walkspeed",
+    Range = {16, 500},
+    Increment = 1,
+    Suffix = "Speed",
+    CurrentValue = 16,
+    Callback = function(Value)
+        local hum = getHumanoid()
+        if hum then hum.WalkSpeed = Value end
+    end
+})
+
+HomeTab:CreateSlider({
+    Name = "JumpPower",
+    Range = {50, 500},
+    Increment = 5,
+    Suffix = "Power",
+    CurrentValue = 50,
+    Callback = function(Value)
+        local hum = getHumanoid()
+        if hum then
+            hum.UseJumpPower = true
+            hum.JumpPower = Value
+        end
+    end
+})
+
+HomeTab:CreateToggle({
+    Name = "Infinite Jump",
+    CurrentValue = false,
+    Callback = function(Value)
+        _G.InfiniteJump = Value
+    end
+})
+
+HomeTab:CreateButton({
+    Name = "Reset Character",
+    Callback = function()
+        if LocalPlayer.Character then
+            LocalPlayer.Character:BreakJoints()
+        end
+    end
+})
+
+-- ================== MISC TAB ==================
+local MiscTab = Window:CreateTab("🔧 Misc", 4483362458)
+MiscTab:CreateSection("Utility")
+
+MiscTab:CreateButton({
+    Name = "🗑️ Destroy UI",
+    Callback = function()
+        Rayfield:Destroy()
+    end
+})
+
+MiscTab:CreateButton({
+    Name = "🔄 Rejoin Server",
+    Callback = function()
+        TeleportService:TeleportToPlaceInstance(game.PlaceId, game.JobId, LocalPlayer)
+    end
+})
+
+-- ================== CREDITS TAB ==================
+local CreditsTab = Window:CreateTab("📜 Credits", 4483362458)
+CreditsTab:CreateParagraph({Title = "Credits", Content = "Created by Fau"})
+
+-- ================== LOGIC CONNECTIONS ==================
+-- Logic for Infinite Jump
+UserInputService.JumpRequest:Connect(function()
+    if _G.InfiniteJump then
+        local hum = getHumanoid()
+        if hum then
+            hum:ChangeState(Enum.HumanoidStateType.Jumping)
+        end
+    end
+end)
+
+Rayfield:Notify({
+    Title = "Hub Loaded",
+    Content = "JumpPower fix and Infinite Jump are active.",
+    Duration = 3
+})
+
+print("✅ Script Loaded Successfully.")
