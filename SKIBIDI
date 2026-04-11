@@ -4,9 +4,9 @@ local success, Rayfield = pcall(function()
 end)
 
 if not success then
-    warn("[WARN] Primary Rayfield URL failed, trying GitHub fallback...")
+    warn("[WARN] Primary Rayfield URL failed, trying fallback...")
     success, Rayfield = pcall(function()
-        return loadstring(game:HttpGet('https://raw.githubusercontent.com/shlexware/Rayfield/main/source'))()
+        return loadstring(game:HttpGet('https://raw.githubusercontent.com/SiriusSoftwareRepo/Rayfield/main/source.lua'))()
     end)
     if not success then
         error("[FATAL] Rayfield could not be loaded. Error: " .. tostring(Rayfield))
@@ -27,17 +27,13 @@ end
 
 -- ================== CREATE WINDOW ==================
 local Window = Rayfield:CreateWindow({
-    Name = "My Own",
-    Icon = 0,
-    LoadingTitle = "My Own",
+    Name = "My Own Hub",
+    LoadingTitle = "Rayfield Interface",
     LoadingSubtitle = "by Fau",
-    Theme = "Default",
-    DisableRayfieldPrompts = false,
-    ToggleUIKeybind = Enum.KeyCode.RightShift, -- Key to toggle UI visibility
     ConfigurationSaving = {
         Enabled = true,
-        FolderName = "MyOwn",
-        FileName = "Settings"
+        FolderName = "MyOwnHub",
+        FileName = "Config"
     },
     Discord = {
         Enabled = false,
@@ -47,13 +43,13 @@ local Window = Rayfield:CreateWindow({
     KeySystem = false
 })
 
--- ================== HOME TAB (Player Tweaks) ==================
-local HomeTab = Window:CreateTab("🏠 Home", 4483362458) -- Image ID added
+-- ================== HOME TAB ==================
+local HomeTab = Window:CreateTab("🏠 Home", 4483362458)
 HomeTab:CreateSection("Player Tweaks")
 
 HomeTab:CreateSlider({
     Name = "Walkspeed",
-    Range = {0, 500},
+    Range = {16, 500},
     Increment = 1,
     Suffix = "Speed",
     CurrentValue = 16,
@@ -65,8 +61,8 @@ HomeTab:CreateSlider({
 
 HomeTab:CreateSlider({
     Name = "JumpPower",
-    Range = {0, 500},
-    Increment = 5,
+    Range = {50, 500},
+    Increment = 1,
     Suffix = "Power",
     CurrentValue = 50,
     Callback = function(Value)
@@ -86,118 +82,36 @@ HomeTab:CreateToggle({
     end
 })
 
-HomeTab:CreateButton({
-    Name = "Reset Character",
-    Callback = function()
-        if LocalPlayer.Character then
-            LocalPlayer.Character:BreakJoints()
-        end
-    end
-})
-
--- ================== MISC TAB (Utility) ==================
-local MiscTab = Window:CreateTab("🔧 Misc", 4483362458) -- Image ID added
-MiscTab:CreateSection("Utility")
+-- ================== MISC TAB ==================
+local MiscTab = Window:CreateTab("🔧 Misc", 4483362458)
 
 MiscTab:CreateButton({
-    Name = "🗑️ Destroy UI",
-    Callback = function()
-        Rayfield:Destroy()
-        print("✅ Rayfield UI has been destroyed.")
-    end
-})
-
-MiscTab:CreateButton({
-    Name = "🔄 Rejoin Server",
+    Name = "Rejoin Server",
     Callback = function()
         TeleportService:TeleportToPlaceInstance(game.PlaceId, game.JobId, LocalPlayer)
     end
 })
 
--- ================== CREDITS TAB ==================
-local CreditsTab = Window:CreateTab("📜 Credits", 4483362458) -- Image ID added
-CreditsTab:CreateParagraph({Title = "Credits", Content = "Created by Fau"})
-
--- ================== LOGIC CONNECTIONS ==================
-
-UserInputService.JumpRequest:Connect(function()
-    if _G.InfiniteJump then
-        local hum = getHumanoid()
-        if hum then
-            hum:ChangeState(Enum.HumanoidStateType.Jumping)
-        end
-    end
-end)
-
-LocalPlayer.CharacterAdded:Connect(function(char)
-    local hum = char:WaitForChild("Humanoid", 5)
-    if hum and _G.InfiniteJump then
-        task.wait(0.1)
-        hum:ChangeState(Enum.HumanoidStateType.Jumping)
-    end
-end)
-
-Rayfield:Notify({
-    Title = "Hub Loaded",
-    Content = "JumpPower fix, Infinite Jump, and Utility buttons are active.",
-    Duration = 3
-})
-
-print("✅ Script updated with fixed tabs and credits.")    CurrentValue = 50,
-    Callback = function(Value)
-        local hum = getHumanoid()
-        if hum then
-            -- This forces the game to recognize JumpPower instead of JumpHeight
-            hum.UseJumpPower = true 
-            hum.JumpPower = Value
-        end
-    end
-})
-
--- Infinite Jump Toggle
-HomeTab:CreateToggle({
-    Name = "Infinite Jump",
-    CurrentValue = false,
-    Callback = function(Value)
-        _G.InfiniteJump = Value
-    end
-})
-
-HomeTab:CreateButton({
-    Name = "Reset Character",
+MiscTab:CreateButton({
+    Name = "Destroy UI",
     Callback = function()
-        if LocalPlayer.Character then
-            LocalPlayer.Character:BreakJoints()
-        end
+        Rayfield:Destroy()
     end
 })
 
 -- ================== LOGIC CONNECTIONS ==================
-
--- Improved Infinite Jump Logic
 UserInputService.JumpRequest:Connect(function()
     if _G.InfiniteJump then
         local hum = getHumanoid()
         if hum then
-            -- Enum is more stable than strings for state changes
             hum:ChangeState(Enum.HumanoidStateType.Jumping)
         end
     end
 end)
 
--- Ensure JumpPower/Infinite Jump persists or stays active after respawning
-LocalPlayer.CharacterAdded:Connect(function(char)
-    local hum = char:WaitForChild("Humanoid", 5)
-    if hum and _G.InfiniteJump then
-        task.wait(0.1)
-        hum:ChangeState(Enum.HumanoidStateType.Jumping)
-    end
-end)
-
 Rayfield:Notify({
-    Title = "Hub Loaded",
-    Content = "JumpPower fix and Infinite Jump are active.",
-    Duration = 3
+    Title = "Loaded!",
+    Content = "Script is ready to use.",
+    Duration = 5,
+    Image = 4483362458,
 })
-
-print("✅ Script updated with UseJumpPower fix.")
