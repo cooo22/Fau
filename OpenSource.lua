@@ -9,13 +9,14 @@ if not success then
         return loadstring(game:HttpGet('https://raw.githubusercontent.com/shlexware/Rayfield/main/source'))()
     end)
     if not success then
-        error("[FATAL] Rayfield could not be loaded. Error: " --[[ @debug ]] .. tostring(Rayfield))
+        error("[FATAL] Rayfield could not be loaded. Error: " .. tostring(Rayfield))
     end
 end
 
 -- ================== SERVICES ==================
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
+local TeleportService = game:GetService("TeleportService")
 local LocalPlayer = Players.LocalPlayer
 
 -- ================== HELPER FUNCTIONS ==================
@@ -29,9 +30,10 @@ local Window = Rayfield:CreateWindow({
     Name = "My Own",
     Icon = 0,
     LoadingTitle = "My Own",
-    LoadingSubtitle = "by Fau", -- Using your handle
+    LoadingSubtitle = "by Fau",
     Theme = "Default",
     DisableRayfieldPrompts = false,
+    ToggleUIKeybind = Enum.KeyCode.RightShift,  -- Hide/Show UI
     ConfigurationSaving = {
         Enabled = true,
         FolderName = "MyOwn",
@@ -42,14 +44,13 @@ local Window = Rayfield:CreateWindow({
         Invite = "",
         RememberJoins = true
     },
-    KeySystem = false 
+    KeySystem = false
 })
 
--- ================== HOME TAB ==================
+-- ================== HOME TAB (Player Tweaks) ==================
 local HomeTab = Window:CreateTab("🏠 Home", nil)
 HomeTab:CreateSection("Player Tweaks")
 
--- Walkspeed Slider
 HomeTab:CreateSlider({
     Name = "Walkspeed",
     Range = {0, 500},
@@ -62,13 +63,90 @@ HomeTab:CreateSlider({
     end
 })
 
--- JumpPower Slider (FIXED IMPLEMENTATION)
 HomeTab:CreateSlider({
     Name = "JumpPower",
     Range = {0, 500},
     Increment = 5,
     Suffix = "Power",
     CurrentValue = 50,
+    Callback = function(Value)
+        local hum = getHumanoid()
+        if hum then
+            hum.UseJumpPower = true
+            hum.JumpPower = Value
+        end
+    end
+})
+
+HomeTab:CreateToggle({
+    Name = "Infinite Jump",
+    CurrentValue = false,
+    Callback = function(Value)
+        _G.InfiniteJump = Value
+    end
+})
+
+HomeTab:CreateButton({
+    Name = "Reset Character",
+    Callback = function()
+        if LocalPlayer.Character then
+            LocalPlayer.Character:BreakJoints()
+        end
+    end
+})
+
+-- ================== MISC TAB (Utility) ==================
+local MiscTab = Window:CreateTab("🔧 Misc", nil)
+MiscTab:CreateSection("Utility")
+
+MiscTab:CreateButton({
+    Name = "🗑️ Destroy UI",
+    Callback = function()
+        Rayfield:Destroy()
+        print("✅ Rayfield UI has been destroyed.")
+    end
+})
+
+MiscTab:CreateButton({
+    Name = "🔄 Rejoin Server",
+    Callback = function()
+        TeleportService:TeleportToPlaceInstance(game.PlaceId, game.JobId, LocalPlayer)
+    end
+})
+
+-- ================== CREDITS TAB ==================
+local CreditsTab = Window:CreateTab("📜 Credits", nil)
+CreditsTab:CreateSection("About")
+
+CreditsTab:CreateLabel("Created by Fau", nil)  -- Simple label (if Rayfield supports it)
+-- If labels aren't supported, we can use a paragraph or just leave the section title.
+
+-- ================== LOGIC CONNECTIONS ==================
+
+UserInputService.JumpRequest:Connect(function()
+    if _G.InfiniteJump then
+        local hum = getHumanoid()
+        if hum then
+            hum:ChangeState(Enum.HumanoidStateType.Jumping)
+        end
+    end
+end)
+
+LocalPlayer.CharacterAdded:Connect(function(char)
+    local hum = char:WaitForChild("Humanoid", 5)
+    if hum and _G.InfiniteJump then
+        task.wait(0.1)
+        hum:ChangeState(Enum.HumanoidStateType.Jumping)
+    end
+end)
+
+Rayfield:Notify({
+    Title = "Hub Loaded",
+    Content = "JumpPower fix, Infinite Jump, and Utility buttons are active.",
+    Duration = 3
+})
+
+print("✅ Script updated with organized tabs: Home, Misc, Credits.")    CurrentValue = 50,
     Callback = function(Value)
         local hum = getHumanoid()
         if hum then
