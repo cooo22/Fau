@@ -1,0 +1,73 @@
+-- ================== MOON INCREMENTAL HUB ==================
+local success, Rayfield = pcall(function() return loadstring(game:HttpGet('https://sirius.menu/rayfield'))() end)
+if not success then error("Rayfield failed to load.") end
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local UserInputService = game:GetService("UserInputService")
+local LocalPlayer = Players.LocalPlayer
+
+local function getHumanoid()
+    local char = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+    return char:FindFirstChildOfClass("Humanoid")
+end
+
+local Window = Rayfield:CreateWindow({Name = "Moon Hub", LoadingTitle = "Loading Moon...", Theme = "Default", ToggleUIKeybind = Enum.KeyCode.RightShift})
+
+-- ================== TAB: HOME ==================
+local HomeTab = Window:CreateTab("🏠 Home", 4483362458)
+HomeTab:CreateSection("Player Tweaks")
+HomeTab:CreateSlider({Name = "Walkspeed", Range = {16, 500}, Increment = 1, Suffix = "Speed", CurrentValue = 16, Callback = function(v) local h = getHumanoid() if h then h.WalkSpeed = v end end})
+HomeTab:CreateSlider({Name = "JumpPower", Range = {50, 500}, Increment = 5, Suffix = "Power", CurrentValue = 50, Callback = function(v) local h = getHumanoid() if h then h.UseJumpPower = true; h.JumpPower = v end end})
+HomeTab:CreateToggle({Name = "Infinite Jump", Callback = function(v) _G.InfiniteJump = v end})
+HomeTab:CreateButton({Name = "Reset Character", Callback = function() if LocalPlayer.Character then LocalPlayer.Character:BreakJoints() end end})
+UserInputService.JumpRequest:Connect(function() if _G.InfiniteJump then local h = getHumanoid() if h then h:ChangeState(Enum.HumanoidStateType.Jumping) end end end)
+
+-- ================== TAB: AUTOMATION ==================
+local AutoTab = Window:CreateTab("⚡ Automation", 4483362458)
+AutoTab:CreateSection("Essence & Star")
+AutoTab:CreateToggle({Name = "Auto Collect Essence/Star", Callback = function(v) _G.AutoEss = v task.spawn(function() while _G.AutoEss do local E = workspace:FindFirstChild("Essence", true) if E then pcall(function() ReplicatedStorage.UpdateEssenceStat:FireServer(E.Position, true) end) end pcall(function() ReplicatedStorage.UpdateStarStat:FireServer(Vector3.new(0,0,0)) end) task.wait(0.2) end end) end})
+AutoTab:CreateSection("Mining")
+AutoTab:CreateToggle({ 
+    Name = "Fast Mine", 
+    Callback = function(v) 
+        _G.AutoMine = v 
+        task.spawn(function()
+            while _G.AutoMine do 
+                local success, myOre = pcall(function() return ReplicatedStorage.GetMyOre:InvokeServer() end)
+                if success and myOre then 
+                    pcall(function() ReplicatedStorage.MineRock:FireServer(myOre) end) 
+                else
+                    local Cave = workspace:FindFirstChild("Cave", true)
+                    if Cave then for _, ore in pairs(Cave:GetChildren()) do if ore.Name:match("Ore_") then pcall(function() ReplicatedStorage.MineRock:FireServer(ore) end) end end end
+                end
+                task.wait(0.001) 
+            end 
+        end)
+    end 
+})
+
+-- ================== TAB: MARS ==================
+local MarsTab = Window:CreateTab("🌍 Mars", 4483362458)
+MarsTab:CreateSection("Ingot & Diamond")
+MarsTab:CreateToggle({Name = "Auto Smelt & Deposit", Callback = function(v) _G.AutoSmelt = v task.spawn(function() while _G.AutoSmelt do pcall(function() ReplicatedStorage.SmeltDeposit:FireServer() ReplicatedStorage.SmeltCollect:FireServer() end) task.wait(0.5) end end) end})
+MarsTab:CreateToggle({Name = "Auto Mineshaft Collect", Callback = function(v) _G.AutoMineS = v task.spawn(function() while _G.AutoMineS do pcall(function() ReplicatedStorage.MineshaftCollect:FireServer() end) task.wait(0.1) end end) end})
+
+-- ================== TAB: VENUS ==================
+local VenusTab = Window:CreateTab("🎣 Venus", 4483362458)
+VenusTab:CreateSection("Fish")
+VenusTab:CreateToggle({Name = "Auto Fish", Callback = function(v) _G.AutoFish = v task.spawn(function() while _G.AutoFish do pcall(function() ReplicatedStorage.StartFishing:FireServer() task.wait(2) ReplicatedStorage.ReelIn:FireServer() end) task.wait(0.5) end end) end})
+VenusTab:CreateButton({Name = "Sell Non-Exotic Fish", Callback = function() 
+    local inv = ReplicatedStorage.GetFishInventory:InvokeServer() 
+    local toSell = {} 
+    local ex = {"PhoenixBlaze", "PhoenixFin", "MagmaPerch"} 
+    for n, a in pairs(inv) do local isEx = false for _, e in pairs(ex) do if n == e then isEx = true end end if not isEx then toSell[n] = a end end 
+    ReplicatedStorage.SellFish:FireServer(toSell) 
+end})
+
+-- ================== TAB: BUYS ==================
+local BuysTab = Window:CreateTab("🛒 Buys", 4483362458)
+BuysTab:CreateSection("Vendor")
+BuysTab:CreateToggle({Name = "Auto Buy Secret Vendor", Callback = function(v) _G.AutoShop = v task.spawn(function() while _G.AutoShop do pcall(function() ReplicatedStorage.OpenSecretVendor:FireServer() for _, i in pairs({"FragmentCore", "AuraStabilizer", "AetherPetal", "AstralDust", "DivineThread"}) do ReplicatedStorage.PurchaseCraftingItem:FireServer(i) end end) task.wait(1) end end) end})
+
+print("✅ Script Loaded Successfully.")
