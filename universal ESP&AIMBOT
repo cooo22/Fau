@@ -1,0 +1,372 @@
+-- ================== RAYFIELD ==================
+local success, Rayfield = pcall(function()
+    return loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+end)
+
+if not success then
+    success, Rayfield = pcall(function()
+        return loadstring(game:HttpGet('https://raw.githubusercontent.com/SiriusSoftwareRepo/Rayfield/main/source.lua'))()
+    end)
+    if not success then error("Rayfield failed") end
+end
+
+-- ================== SERVICES ==================
+local Players = game:GetService("Players")
+local UIS = game:GetService("UserInputService")
+local TeleportService = game:GetService("TeleportService")
+local RunService = game:GetService("RunService")
+
+local LocalPlayer = Players.LocalPlayer
+local Camera = workspace.CurrentCamera
+
+-- ================== SETTINGS ==================
+local ESP = {
+    Enabled = false,
+    Boxes = true,
+    Tracers = true,
+    Names = true,
+    TeamCheck = false       -- New: Enemy Only
+}
+
+local Aimbot = {
+    Enabled = false,
+    Smoothness = 0.15,
+    FOV = 120,
+    ShowFOV = true
+}
+
+-- New: Hitbox Expander Settings
+local Hitbox = {
+    Enabled = false,
+    Size = 6,
+    Target = "Head" -- "Head" or "HumanoidRootPart"
+}
+
+-- ================== DRAWINGS ==================
+local FOVCircle = Drawing.new("Circle")
+FOVCircle.Color = Color3.fromRGB(255,255,255)
+FOVCircle.Thickness = 1.5
+FOVCircle.NumSides = 100
+FOVCircle.Filled = false
+
+local ESPCache = {}
+
+-- ================== HELPERS ==================
+local function getHumanoid()
+    local char = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+    return char:FindFirstChildOfClass("Humanoid")
+end
+
+-- New: Team Check Helper
+local function isEnemy(player)
+    -- Fallback: If teams aren't used, treat everyone as enemy
+    if not LocalPlayer.Team or not player.Team then
+        return true
+    end
+    return player.Team ~= LocalPlayer.Team
+end
+
+-- New: Apply Hitbox Expansion
+local function applyHitbox(char)
+    if not char then return end
+    local part = char:FindFirstChild(Hitbox.Target)
+    if part and part:IsA("BasePart") then
+        part.Size = Vector3.new(Hitbox.Size, Hitbox.Size, Hitbox.Size)
+        part.Massless = true
+        part.CanCollide = false
+    end
+end
+
+-- ================== PLAYER AIMBOT ONLY ==================
+local function getClosestTarget()
+    local closest, shortest = nil, math.huge
+
+    for _, player in pairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer and player.Character then
+            -- New: Skip teammates if TeamCheck is enabled
+            if ESP.TeamCheck and not isEnemy(player) then
+                continue
+            end
+
+            local head = player.Character:FindFirstChild("Head")
+            local humanoid = player.Character:FindFirstChild("Humanoid")
+
+            if head and humanoid and humanoid.Health > 0 then
+                local pos, visible = Camera:WorldToViewportPoint(head.Position)
+
+                if visible then
+                    local dist = (Vector2.new(pos.X,pos.Y) -
+                        Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2)).Magnitude
+
+                    if dist < shortest and dist <= Aimbot.FOV then
+                        shortest = dist
+                        closest = head
+                    end
+                end
+            end
+        end
+    end
+
+    return closest
+end
+
+local function aimAt(target)
+    Camera.CFrame = Camera.CFrame:Lerp(
+        CFrame.new(Camera.CFrame.Position, target.Position),
+        Aimbot.Smoothness
+    )
+end
+
+-- ================== ESP (PLAYERS + BOTS) ==================
+local function createESP(player)
+    if player == LocalPlayer then return end
+
+    local box = Drawing.new("Square")
+    box.Thickness = 2
+    box.Filled = false
+    box.Color = Color3.fromRGB(255,0,0)
+
+    local tracer = Drawing.new("Line")
+    tracer.Thickness = 1.5
+
+    local text = Drawing.new("Text")
+    text.Size = 14
+    text.Center = true
+    text.Outline = true
+
+    ESPCache[player] = {box=box,tracer=tracer,text=text}
+end
+
+for _,p in pairs(Players:GetPlayers()) do createESP(p) end
+Players.PlayerAdded:Connect(createESP)
+
+-- ================== MAIN LOOP ==================
+RunService.RenderStepped:Connect(function()
+
+    -- FOV
+    FOVCircle.Visible = Aimbot.Enabled and Aimbot.ShowFOV
+    FOVCircle.Radius = Aimbot.FOV
+    FOVCircle.Position = Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2)
+
+    -- AIMBOT (PLAYERS ONLY)
+    if Aimbot.Enabled then
+        local target = getClosestTarget()
+        if target then aimAt(target) end
+    end
+
+    -- ESP LOOP (PLAYERS + ANYTHING IN CACHE)
+    for player, esp in pairs(ESPCache) do
+        local char = player.Character
+        local root = char and char:FindFirstChild("HumanoidRootPart")
+        local head = char and char:FindFirstChild("Head")
+        local humanoid = char and char:FindFirstChild("Humanoid")
+
+        if not ESP.Enabled or not root then
+            esp.box.Visible = false
+            esp.tracer.Visible = false
+            esp.text.Visible = false
+            continue
+        end
+
+        -- New: Team Check (Skip teammates if enabled)
+        if ESP.TeamCheck and not isEnemy(player) then
+            esp.box.Visible = false
+            esp.tracer.Visible = false
+            esp.text.Visible = false
+            continue
+        end
+
+        local pos, vis = Camera:WorldToViewportPoint(root.Position)
+        local headPos = Camera:WorldToViewportPoint(head.Position)
+
+        if vis then
+            esp.box.Size = Vector2.new(40,70)
+            esp.box.Position = Vector2.new(pos.X-20,pos.Y-35)
+            esp.box.Visible = ESP.Boxes
+
+            esp.tracer.From = Vector2.new(Camera.ViewportSize.X/2,Camera.ViewportSize.Y)
+            esp.tracer.To = Vector2.new(pos.X,pos.Y)
+            esp.tracer.Visible = ESP.Tracers
+
+            esp.text.Text = player.Name.." ["..math.floor(humanoid.Health).."]"
+            esp.text.Position = Vector2.new(headPos.X, headPos.Y - 25)
+            esp.text.Visible = ESP.Names
+        else
+            esp.box.Visible = false
+            esp.tracer.Visible = false
+            esp.text.Visible = false
+        end
+    end
+end)
+
+-- ================== HITBOX EXPANDER LOOP ==================
+task.spawn(function()
+    while true do
+        if Hitbox.Enabled then
+            for _, player in pairs(Players:GetPlayers()) do
+                if player ~= LocalPlayer and player.Character then
+                    -- Optional: Also respect team check for hitbox (only enemies)
+                    if ESP.TeamCheck and not isEnemy(player) then
+                        continue
+                    end
+                    applyHitbox(player.Character)
+                end
+            end
+        end
+        task.wait(0.5) -- Apply every half second (enough for respawns)
+    end
+end)
+
+-- ================== UI ==================
+local Window = Rayfield:CreateWindow({
+    Name = "My Own Hub",
+    LoadingTitle = "My Hub",
+    LoadingSubtitle = "by Fau",
+    ToggleUIKeybind = Enum.KeyCode.RightShift
+})
+
+-- HOME
+local HomeTab = Window:CreateTab("🏠 Home", 4483362458)
+
+HomeTab:CreateSlider({
+    Name = "Walkspeed",
+    Range = {16,500},
+    Increment = 1,
+    CurrentValue = 16,
+    Callback = function(v)
+        local h = getHumanoid()
+        if h then h.WalkSpeed = v end
+    end
+})
+
+HomeTab:CreateSlider({
+    Name = "JumpPower",
+    Range = {50,500},
+    Increment = 5,
+    CurrentValue = 50,
+    Callback = function(v)
+        local h = getHumanoid()
+        if h then
+            h.UseJumpPower = true
+            h.JumpPower = v
+        end
+    end
+})
+
+-- AIMBOT
+local AimbotTab = Window:CreateTab("🎯 Aimbot", 4483362458)
+
+AimbotTab:CreateToggle({
+    Name = "Enable Aimbot",
+    CurrentValue = false,
+    Callback = function(v) Aimbot.Enabled = v end
+})
+
+AimbotTab:CreateSlider({
+    Name = "Smoothness",
+    Range = {0.05,0.5},
+    Increment = 0.01,
+    CurrentValue = 0.15,
+    Callback = function(v) Aimbot.Smoothness = v end
+})
+
+AimbotTab:CreateSlider({
+    Name = "FOV",
+    Range = {50,300},
+    Increment = 5,
+    CurrentValue = 120,
+    Callback = function(v) Aimbot.FOV = v end
+})
+
+AimbotTab:CreateToggle({
+    Name = "Show FOV Circle",
+    CurrentValue = true,
+    Callback = function(v) Aimbot.ShowFOV = v end
+})
+
+-- ESP
+local ESPTab = Window:CreateTab("👁️ ESP", 4483362458)
+
+ESPTab:CreateToggle({
+    Name = "Enable ESP",
+    CurrentValue = false,
+    Callback = function(v) ESP.Enabled = v end
+})
+
+ESPTab:CreateToggle({
+    Name = "Boxes",
+    CurrentValue = true,
+    Callback = function(v) ESP.Boxes = v end
+})
+
+ESPTab:CreateToggle({
+    Name = "Tracers",
+    CurrentValue = true,
+    Callback = function(v) ESP.Tracers = v end
+})
+
+ESPTab:CreateToggle({
+    Name = "Names",
+    CurrentValue = true,
+    Callback = function(v) ESP.Names = v end
+})
+
+-- New: Team Check Toggle
+ESPTab:CreateToggle({
+    Name = "Enemy Only (Team Check)",
+    CurrentValue = false,
+    Callback = function(v)
+        ESP.TeamCheck = v
+    end
+})
+
+-- HITBOX (New Tab)
+local HitboxTab = Window:CreateTab("💥 Hitbox", 4483362458)
+
+HitboxTab:CreateToggle({
+    Name = "Enable Hitbox Expander",
+    CurrentValue = false,
+    Callback = function(v)
+        Hitbox.Enabled = v
+    end
+})
+
+HitboxTab:CreateSlider({
+    Name = "Hitbox Size",
+    Range = {2, 12},
+    Increment = 1,
+    CurrentValue = 6,
+    Callback = function(v)
+        Hitbox.Size = v
+    end
+})
+
+HitboxTab:CreateDropdown({
+    Name = "Target Part",
+    Options = {"Head", "HumanoidRootPart"},
+    CurrentOption = "Head",
+    Callback = function(v)
+        Hitbox.Target = v
+    end
+})
+
+-- MISC
+local MiscTab = Window:CreateTab("🔧 Misc", 4483362458)
+
+MiscTab:CreateButton({
+    Name = "Rejoin",
+    Callback = function()
+        TeleportService:TeleportToPlaceInstance(game.PlaceId, game.JobId, LocalPlayer)
+    end
+})
+
+MiscTab:CreateButton({
+    Name = "Destroy UI",
+    Callback = function()
+        Rayfield:Destroy()
+    end
+})
+
+-- CREDITS
+local CreditsTab = Window:CreateTab("📜 Credits", 4483362458)
+CreditsTab:CreateParagraph({Title="Credits", Content="Created by Fau"})
